@@ -1,0 +1,13 @@
+node_modules/
+.idea/
+.research/
+dist/
+coverage/
+.vite/
+.imagetools-cache/
+.integration-*/
+.hmr-*/
+test/**/dist/
+test/**/.svelte-kit/
+
+.env

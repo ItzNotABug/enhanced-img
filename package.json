@@ -1,0 +1,72 @@
+{
+	"name": "@itznotabug/enhanced-img",
+	"version": "0.1.0",
+	"description": "Build-time image optimization for Svelte, including finite dynamic image catalogs",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/itznotabug/enhanced-img.git"
+	},
+	"keywords": [
+		"component",
+		"enhanced",
+		"image",
+		"preprocessor",
+		"plugin",
+		"svelte",
+		"sveltekit",
+		"vite"
+	],
+	"license": "Apache-2.0",
+	"homepage": "https://github.com/itznotabug/enhanced-img#readme",
+	"type": "module",
+	"packageManager": "bun@1.3.14",
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"lint": "prettier --check . --ignore-path .prettierignore",
+		"check": "tsc",
+		"format": "prettier --write --cache .",
+		"prepublishOnly": "bun run verify",
+		"test": "bun run check && bun run test:unit && bun run test:integration",
+		"test:unit": "vitest run --exclude test/integration.spec.js --exclude test/dev.spec.js",
+		"test:integration": "vitest run test/integration.spec.js test/dev.spec.js",
+		"verify": "bun run lint && bun run test"
+	},
+	"files": [
+		"NOTICE.md",
+		"src",
+		"types"
+	],
+	"exports": {
+		"types": "./types/index.d.ts",
+		"import": "./src/index.js"
+	},
+	"types": "types/index.d.ts",
+	"dependencies": {
+		"magic-string": "^0.30.5",
+		"picomatch": "4.0.5",
+		"sharp": "^0.34.1",
+		"svelte-parse-markup": "^0.1.5",
+		"tinyglobby": "^0.2.15",
+		"vite-imagetools": "^9.0.3",
+		"zimmerframe": "^1.1.2"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "6.2.4",
+		"@types/estree": "^1.0.8",
+		"@types/node": "^22.15.0",
+		"prettier": "^3.5.3",
+		"prettier-plugin-svelte": "4.1.1",
+		"rollup": "^4.59.0",
+		"svelte": "^5.0.0",
+		"typescript": "^5.8.3",
+		"vite": "^7.0.0",
+		"vitest": "^3.2.4"
+	},
+	"peerDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^6.0.0 || ^7.0.0",
+		"svelte": "^5.0.0",
+		"vite": "^6.3.0 || >=7.0.0"
+	}
+}

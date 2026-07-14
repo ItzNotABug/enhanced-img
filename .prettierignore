@@ -1,0 +1,7 @@
+.idea/
+LICENSE.md
+NOTICE.md
+.research/
+.integration-*/
+.hmr-*/
+test/Output.svelte
