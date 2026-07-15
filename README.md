@@ -56,6 +56,11 @@ at build time:
 />
 ```
 
+Other vite-imagetools directives pass through as well. On photo-heavy catalogs,
+`effort=2&chromaSubsampling=4:2:0` cuts AVIF encode time and output size substantially.
+Concurrent encodes are bounded automatically; override with the
+`ENHANCED_IMG_ENCODE_CONCURRENCY` environment variable.
+
 Unmatched paths, unbounded queries, remote URLs, and SVGs render as plain `<img>`,
 untouched — development warns once per miss, production stays silent. Files must exist at
 build time; use an image CDN for anything uploaded after deployment.
