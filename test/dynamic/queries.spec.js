@@ -47,14 +47,33 @@ describe('query canonicalization', () => {
 			sizes: '100vw',
 			patterns: ['src/**/*.jpg']
 		});
-		const other_sizes = create_query_profile({
-			query: 'quality=75&w=400;800',
-			sizes: '50vw',
-			patterns: ['src/**/*.jpg']
-		});
 		expect(first.id).toBe(reordered.id);
-		expect(first.id).not.toBe(other_sizes.id);
 		expect(first.id).toMatch(/^[a-f\d]{64}$/);
+	});
+
+	it('consolidates profiles whose sizes are inert under an explicit width list', () => {
+		const gallery = create_query_profile({
+			query: 'w=320;640;960&quality=75',
+			sizes: '(max-width: 520px) 88vw, 331px',
+			patterns: ['static/**/*.webp']
+		});
+		const before_after = create_query_profile({
+			query: 'quality=75&w=320;640;960',
+			sizes: '(max-width: 520px) 100vw, 366px',
+			width: 640,
+			patterns: ['static/**/*.webp']
+		});
+		expect(gallery.id).toBe(before_after.id);
+		expect(gallery.internalQuery).not.toContain('imgSizes');
+		expect(gallery.internalQuery).not.toContain('imgWidth');
+		expect(gallery.sizes).toBeNull();
+	});
+
+	it('keeps sizes in the profile identity when widths are ladder-derived', () => {
+		const first = create_query_profile({ query: 'quality=75', sizes: '100vw' });
+		const other_sizes = create_query_profile({ query: 'quality=75', sizes: '50vw' });
+		expect(first.id).not.toBe(other_sizes.id);
+		expect(first.internalQuery).toContain('imgSizes=100vw');
 	});
 
 	it.each(['%=x', '=x', 'a=%', 'a=1&&b=2', 'a=1#fragment', 'a=%00'])(
