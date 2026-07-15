@@ -4,7 +4,7 @@
 	"description": "Build-time image optimization for Svelte, including finite dynamic image catalogs",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/itznotabug/enhanced-img.git"
+		"url": "git+https://github.com/ItzNotABug/enhanced-img.git"
 	},
 	"keywords": [
 		"component",
@@ -17,7 +17,7 @@
 		"vite"
 	],
 	"license": "Apache-2.0",
-	"homepage": "https://github.com/itznotabug/enhanced-img#readme",
+	"homepage": "https://github.com/ItzNotABug/enhanced-img#readme",
 	"type": "module",
 	"packageManager": "bun@1.3.14",
 	"publishConfig": {
