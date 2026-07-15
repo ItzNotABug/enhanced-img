@@ -29,11 +29,16 @@ export function canonicalize_public_query(query) {
  */
 export function create_internal_query(public_query, attributes = {}) {
 	const entries = parse_query_entries(canonicalize_public_query(public_query));
-	if (has_literal_value(attributes.sizes)) {
-		entries.push({ key: 'imgSizes', value: String(attributes.sizes) });
-	}
-	if (has_literal_value(attributes.width)) {
-		entries.push({ key: 'imgWidth', value: String(attributes.width) });
+	// An explicit `w` list overrides the imgSizes/imgWidth-derived width ladder,
+	// so both attributes are inert for generation; omitting them lets tags that
+	// produce identical output share one profile and one cache entry.
+	if (!has_explicit_widths(entries)) {
+		if (has_literal_value(attributes.sizes)) {
+			entries.push({ key: 'imgSizes', value: String(attributes.sizes) });
+		}
+		if (has_literal_value(attributes.width)) {
+			entries.push({ key: 'imgWidth', value: String(attributes.width) });
+		}
 	}
 	entries.push({ key: 'enhanced', value: '' });
 	return serialize_query_entries(entries);
@@ -56,8 +61,9 @@ export function create_query_profile(input) {
 		);
 	}
 
-	const sizes = normalize_profile_attribute(input.sizes);
-	const width = normalize_profile_attribute(input.width);
+	const explicit_widths = has_explicit_widths(public_entries);
+	const sizes = explicit_widths ? null : normalize_profile_attribute(input.sizes);
+	const width = explicit_widths ? null : normalize_profile_attribute(input.width);
 	const internal_query = create_internal_query(public_query, { sizes, width });
 	const patterns = [...(input.patterns ?? [])];
 	const schema_version = input.schemaVersion ?? PROFILE_SCHEMA_VERSION;
@@ -136,6 +142,11 @@ export function serialize_query_entries(entries) {
 	for (const entry of entries) params.append(entry.key, entry.value);
 	params.sort();
 	return params.toString();
+}
+
+/** @param {readonly QueryEntry[]} entries */
+function has_explicit_widths(entries) {
+	return entries.some((entry) => entry.key === 'w' && entry.value !== '');
 }
 
 /** @param {string | number | null | undefined} value */
