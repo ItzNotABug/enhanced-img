@@ -94,6 +94,19 @@ export function create_semaphore(limit) {
 }
 
 /**
+ * Rolldown and rollup write their transient "transforming (n) ..." status
+ * without a trailing newline; clear the pending terminal line first so our
+ * message starts at column 0 instead of being appended to spinner residue.
+ *
+ * @param {Pick<import('vite').Logger, 'info'> | undefined} logger
+ * @param {string} message
+ */
+function log_info(logger, message) {
+	if (process.stdout.isTTY) process.stdout.write('\r\x1b[2K');
+	logger?.info(message);
+}
+
+/**
  * Bound the plugin's image loads with a semaphore and report build progress.
  * Every enhanced image — literal or dynamic-catalog — flows through this load
  * hook, so this is the single choke point for encode work.
@@ -138,7 +151,7 @@ export function with_bounded_encodes(plugin, options = {}) {
 					if (processed === 0) started = Date.now();
 					processed++;
 					if (is_build && processed % PROGRESS_INTERVAL === 0) {
-						logger?.info(`@itznotabug/enhanced-img: processed ${processed} images...`);
+						log_info(logger, `@itznotabug/enhanced-img: processed ${processed} images...`);
 					}
 				}
 				return result;
@@ -147,7 +160,7 @@ export function with_bounded_encodes(plugin, options = {}) {
 		buildEnd(error) {
 			if (is_build && processed > 0) {
 				const seconds = Math.round((Date.now() - started) / 100) / 10;
-				logger?.info(`@itznotabug/enhanced-img: processed ${processed} images in ${seconds}s`);
+				log_info(logger, `@itznotabug/enhanced-img: processed ${processed} images in ${seconds}s`);
 			}
 			processed = 0;
 			if (!original_build_end) return;
