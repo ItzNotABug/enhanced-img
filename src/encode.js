@@ -3,6 +3,8 @@ import process from 'node:process';
 import { getMetadata, setMetadata } from 'vite-imagetools';
 
 const IMAGE_QUERY_ID = /^[^?]+\.(avif|gif|heif|jpeg|jpg|png|tiff|webp)\?./i;
+// Vite-owned asset queries load instantly and must not wait behind encodes.
+const PASSTHROUGH_QUERY = /\?(?:url|raw|inline|no-inline|worker|sharedworker)$/;
 const CHROMA_FORMATS = new Set(['avif', 'heif', 'jpg', 'jpeg']);
 const CHROMA_VALUES = new Set(['4:2:0', '4:4:4']);
 const PROGRESS_INTERVAL = 25;
@@ -58,7 +60,7 @@ export function default_encode_concurrency(env = process.env) {
 		typeof os.availableParallelism === 'function'
 			? os.availableParallelism()
 			: os.cpus().length || 1;
-	return Math.min(Math.max(1, cores), 8);
+	return Math.max(1, cores);
 }
 
 /**
@@ -119,6 +121,7 @@ export function with_bounded_encodes(plugin, options = {}) {
 	const original_build_end = plugin.buildEnd;
 
 	let is_build = false;
+	let verbose = true;
 	/** @type {Pick<import('vite').Logger, 'info'> | undefined} */
 	let logger;
 	let processed = 0;
@@ -128,6 +131,7 @@ export function with_bounded_encodes(plugin, options = {}) {
 	/** @param {number} count */
 	function report_progress(count) {
 		if (interactive) {
+			if (!verbose) return;
 			rendered = true;
 			process.stdout.write(`${CLEAR_LINE}@itznotabug/enhanced-img: processed ${count} images...`);
 		} else if (count % PROGRESS_INTERVAL === 0) {
@@ -149,6 +153,7 @@ export function with_bounded_encodes(plugin, options = {}) {
 		...plugin,
 		configResolved(config) {
 			is_build = config.command === 'build';
+			verbose = (config.logLevel ?? 'info') === 'info';
 			logger = config.logger;
 			if (!original_config_resolved) return;
 			const handler =
@@ -160,7 +165,9 @@ export function with_bounded_encodes(plugin, options = {}) {
 		async load(id) {
 			if (!original_load) return;
 			const handler = typeof original_load === 'object' ? original_load.handler : original_load;
-			if (!IMAGE_QUERY_ID.test(id)) return handler.call(this, id);
+			if (!IMAGE_QUERY_ID.test(id) || PASSTHROUGH_QUERY.test(id)) {
+				return handler.call(this, id);
+			}
 
 			const context = this;
 			return run(async () => {

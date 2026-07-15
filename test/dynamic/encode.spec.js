@@ -63,11 +63,11 @@ describe('default_encode_concurrency', () => {
 		expect(default_encode_concurrency({ ENHANCED_IMG_ENCODE_CONCURRENCY: '3' })).toBe(3);
 	});
 
-	it('falls back to a bounded core count for invalid overrides', () => {
+	it('falls back to the machine core count for invalid overrides', () => {
 		for (const value of [undefined, '0', '-2', 'lots']) {
 			const concurrency = default_encode_concurrency({ ENHANCED_IMG_ENCODE_CONCURRENCY: value });
+			expect(Number.isInteger(concurrency)).toBe(true);
 			expect(concurrency).toBeGreaterThanOrEqual(1);
-			expect(concurrency).toBeLessThanOrEqual(8);
 		}
 	});
 });
@@ -136,8 +136,8 @@ describe('chromaSubsampling directive', () => {
 });
 
 describe('with_bounded_encodes', () => {
-	/** @param {{ load: (id: string) => unknown, concurrency?: number, interactive?: boolean }} options */
-	function create_wrapped({ load, concurrency = 2, interactive = false }) {
+	/** @param {{ load: (id: string) => unknown, concurrency?: number, interactive?: boolean, logLevel?: string }} options */
+	function create_wrapped({ load, concurrency = 2, interactive = false, logLevel = 'info' }) {
 		const info = vi.fn();
 		const plugin = with_bounded_encodes(/** @type {any} */ ({ name: 'fake-imagetools', load }), {
 			concurrency,
@@ -149,7 +149,7 @@ describe('with_bounded_encodes', () => {
 				: plugin.configResolved;
 		config_resolved?.call(
 			/** @type {any} */ ({}),
-			/** @type {any} */ ({ command: 'build', logger: { info } })
+			/** @type {any} */ ({ command: 'build', logLevel, logger: { info } })
 		);
 		return { plugin, info };
 	}
@@ -233,6 +233,52 @@ describe('with_bounded_encodes', () => {
 		} finally {
 			write.mockRestore();
 		}
+	});
+
+	it('suppresses the interactive progress line below the info log level', async () => {
+		const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+		try {
+			const { plugin, info } = create_wrapped({
+				load: () => 'picture',
+				interactive: true,
+				logLevel: 'silent'
+			});
+			const load = typeof plugin.load === 'object' ? plugin.load.handler : plugin.load;
+			const build_end =
+				typeof plugin.buildEnd === 'object' ? plugin.buildEnd.handler : plugin.buildEnd;
+			if (!load || !build_end) throw new Error('expected load and buildEnd hooks');
+
+			await load.call(/** @type {any} */ ({}), '/assets/one.png?enhanced');
+			build_end.call(/** @type {any} */ ({}));
+			expect(write).not.toHaveBeenCalled();
+			expect(info).not.toHaveBeenCalled();
+		} finally {
+			write.mockRestore();
+		}
+	});
+
+	it('lets vite-owned asset queries skip the encode queue', async () => {
+		/** @type {string[]} */
+		const order = [];
+		const { plugin } = create_wrapped({
+			load: async (id) => {
+				if (id.includes('?enhanced')) await sleep(20);
+				order.push(id);
+				return null;
+			},
+			concurrency: 1
+		});
+		const load = typeof plugin.load === 'object' ? plugin.load.handler : plugin.load;
+		if (!load) throw new Error('expected a load hook');
+
+		await Promise.all([
+			load.call(/** @type {any} */ ({}), '/assets/busy.png?enhanced'),
+			load.call(/** @type {any} */ ({}), '/assets/queued.png?enhanced'),
+			load.call(/** @type {any} */ ({}), '/assets/direct.png?url'),
+			load.call(/** @type {any} */ ({}), '/assets/direct.png?raw')
+		]);
+		// The ?url and ?raw ids resolve while the single slot is occupied.
+		expect(order.slice(0, 2)).toEqual(['/assets/direct.png?url', '/assets/direct.png?raw']);
 	});
 
 	it('stays silent when nothing was processed', () => {
