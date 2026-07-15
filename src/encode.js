@@ -93,30 +93,27 @@ export function create_semaphore(limit) {
 	};
 }
 
-/**
- * Rolldown and rollup write their transient "transforming (n) ..." status
- * without a trailing newline; clear the pending terminal line first so our
- * message starts at column 0 instead of being appended to spinner residue.
- *
- * @param {Pick<import('vite').Logger, 'info'> | undefined} logger
- * @param {string} message
- */
-function log_info(logger, message) {
-	if (process.stdout.isTTY) process.stdout.write('\r\x1b[2K');
-	logger?.info(message);
-}
+// Clears the current terminal line: rolldown/rollup write their transient
+// "transforming (n) ..." status without a trailing newline.
+const CLEAR_LINE = '\r\x1b[2K';
 
 /**
  * Bound the plugin's image loads with a semaphore and report build progress.
  * Every enhanced image — literal or dynamic-catalog — flows through this load
  * hook, so this is the single choke point for encode work.
  *
+ * Interactive terminals get one self-erasing progress line so only the final
+ * catalog summary survives in scrollback; captured logs (CI, deploy consoles)
+ * get durable heartbeat lines instead, where overwriting is impossible and
+ * long encode phases would otherwise look like hangs.
+ *
  * @param {import('vite').Plugin} plugin
- * @param {{ concurrency?: number }} [options]
+ * @param {{ concurrency?: number, interactive?: boolean }} [options]
  * @returns {import('vite').Plugin}
  */
 export function with_bounded_encodes(plugin, options = {}) {
 	const run = create_semaphore(options.concurrency ?? default_encode_concurrency());
+	const interactive = options.interactive ?? Boolean(process.stdout.isTTY);
 	const original_config_resolved = plugin.configResolved;
 	const original_load = plugin.load;
 	const original_build_end = plugin.buildEnd;
@@ -126,6 +123,27 @@ export function with_bounded_encodes(plugin, options = {}) {
 	let logger;
 	let processed = 0;
 	let started = 0;
+	let rendered = false;
+
+	/** @param {number} count */
+	function report_progress(count) {
+		if (interactive) {
+			rendered = true;
+			process.stdout.write(`${CLEAR_LINE}@itznotabug/enhanced-img: processed ${count} images...`);
+		} else if (count % PROGRESS_INTERVAL === 0) {
+			logger?.info(`@itznotabug/enhanced-img: processed ${count} images...`);
+		}
+	}
+
+	function report_done() {
+		if (interactive) {
+			if (rendered) process.stdout.write(CLEAR_LINE);
+			rendered = false;
+		} else if (processed > 0) {
+			const seconds = Math.round((Date.now() - started) / 100) / 10;
+			logger?.info(`@itznotabug/enhanced-img: processed ${processed} images in ${seconds}s`);
+		}
+	}
 
 	return {
 		...plugin,
@@ -150,18 +168,13 @@ export function with_bounded_encodes(plugin, options = {}) {
 				if (result != null) {
 					if (processed === 0) started = Date.now();
 					processed++;
-					if (is_build && processed % PROGRESS_INTERVAL === 0) {
-						log_info(logger, `@itznotabug/enhanced-img: processed ${processed} images...`);
-					}
+					if (is_build) report_progress(processed);
 				}
 				return result;
 			});
 		},
 		buildEnd(error) {
-			if (is_build && processed > 0) {
-				const seconds = Math.round((Date.now() - started) / 100) / 10;
-				log_info(logger, `@itznotabug/enhanced-img: processed ${processed} images in ${seconds}s`);
-			}
+			if (is_build) report_done();
 			processed = 0;
 			if (!original_build_end) return;
 			const handler =

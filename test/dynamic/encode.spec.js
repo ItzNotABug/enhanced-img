@@ -136,11 +136,12 @@ describe('chromaSubsampling directive', () => {
 });
 
 describe('with_bounded_encodes', () => {
-	/** @param {{ load: (id: string) => unknown, concurrency?: number }} options */
-	function create_wrapped({ load, concurrency = 2 }) {
+	/** @param {{ load: (id: string) => unknown, concurrency?: number, interactive?: boolean }} options */
+	function create_wrapped({ load, concurrency = 2, interactive = false }) {
 		const info = vi.fn();
 		const plugin = with_bounded_encodes(/** @type {any} */ ({ name: 'fake-imagetools', load }), {
-			concurrency
+			concurrency,
+			interactive
 		});
 		const config_resolved =
 			typeof plugin.configResolved === 'object'
@@ -205,6 +206,33 @@ describe('with_bounded_encodes', () => {
 		build_end.call(/** @type {any} */ ({}));
 		const summary = info.mock.calls.at(-1)?.[0];
 		expect(summary).toMatch(/processed 26 images in \d+(\.\d+)?s/);
+	});
+
+	it('renders a self-erasing progress line on interactive terminals', async () => {
+		const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+		try {
+			const { plugin, info } = create_wrapped({
+				load: () => 'picture',
+				concurrency: 4,
+				interactive: true
+			});
+			const load = typeof plugin.load === 'object' ? plugin.load.handler : plugin.load;
+			const build_end =
+				typeof plugin.buildEnd === 'object' ? plugin.buildEnd.handler : plugin.buildEnd;
+			if (!load || !build_end) throw new Error('expected load and buildEnd hooks');
+
+			await load.call(/** @type {any} */ ({}), '/assets/one.png?enhanced');
+			await load.call(/** @type {any} */ ({}), '/assets/two.png?enhanced');
+			const updates = write.mock.calls.map((call) => String(call[0]));
+			expect(updates.at(-1)).toBe('\r\x1b[2K@itznotabug/enhanced-img: processed 2 images...');
+
+			build_end.call(/** @type {any} */ ({}));
+			// The line is erased and no durable summary is written.
+			expect(write.mock.calls.map((call) => String(call[0])).at(-1)).toBe('\r\x1b[2K');
+			expect(info).not.toHaveBeenCalled();
+		} finally {
+			write.mockRestore();
+		}
 	});
 
 	it('stays silent when nothing was processed', () => {
