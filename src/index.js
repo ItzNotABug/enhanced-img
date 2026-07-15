@@ -1,6 +1,7 @@
 import process from 'node:process';
 import path from 'node:path';
 import { imagetools } from 'vite-imagetools';
+import { extend_transforms, with_bounded_encodes } from './encode.js';
 import { normalize_options } from './options.js';
 import { image_plugin } from './vite-plugin.js';
 
@@ -123,13 +124,14 @@ function imagetools_plugin(allow_public = false) {
 				...(kind === 'x' && !qs.has('w') && { basePixels: widths[0].toString() })
 			});
 		},
-		namedExports: false
+		namedExports: false,
+		extendTransforms: extend_transforms
 	};
 
 	// TODO: should we make formats or sizes configurable besides just letting people override defaultDirectives?
 	// TODO: generate img rather than picture if only a single format is provided
 	//     by resolving the directives for the URL in the preprocessor
-	return imagetools(imagetools_opts);
+	return with_bounded_encodes(imagetools(imagetools_opts));
 }
 
 /**

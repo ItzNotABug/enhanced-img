@@ -147,6 +147,65 @@ it('deduplicates development miss warnings across repeated SSR renders', async (
 	}
 }, 30_000);
 
+it('applies effort and chromaSubsampling directives to dynamic sources', async () => {
+	// A chroma-rich gradient; the fixture's solid-color images could encode
+	// identically regardless of subsampling.
+	const width = 64;
+	const height = 32;
+	const data = Buffer.alloc(width * height * 3);
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const i = (y * width + x) * 3;
+			data[i] = (x * 4) % 256;
+			data[i + 1] = (y * 8) % 256;
+			data[i + 2] = ((x + y) * 5) % 256;
+		}
+	}
+	await sharp(data, { raw: { width, height, channels: 3 } })
+		.png()
+		.toFile(path.join(root, 'src/assets/gradient.png'));
+
+	/** @param {string} name @param {string} query */
+	async function build_variant(name, query) {
+		await fs.writeFile(
+			path.join(root, `src/${name}.svelte`),
+			'<script>const src = JSON.parse(\'"/src/assets/gradient.png"\');</script>\n' +
+				`<enhanced:img src={src + '${query}'} alt="tuning" />`
+		);
+		await fs.writeFile(
+			path.join(root, `src/${name}.js`),
+			`import { mount } from 'svelte'; import Component from './${name}.svelte'; mount(Component, { target: document.body });`
+		);
+		const config = vite_config(`dist-${name}`);
+		config.build = {
+			...config.build,
+			rollupOptions: { input: path.join(root, `src/${name}.js`) }
+		};
+		await build(config);
+
+		const assets = path.join(root, `dist-${name}`, 'assets');
+		// The profile generates variants for every catalog candidate; compare
+		// only the gradient's output.
+		const avifs = (await fs.readdir(assets)).filter(
+			(file) => file.startsWith('gradient') && file.endsWith('.avif')
+		);
+		expect(avifs).toHaveLength(1);
+		return fs.readFile(path.join(assets, avifs[0]));
+	}
+
+	const plain = await build_variant('tuning-plain', '?w=64&quality=60');
+	const subsampled = await build_variant(
+		'tuning-chroma',
+		'?w=64&quality=60&chromaSubsampling=4:2:0'
+	);
+	// effort must stay within every generated format's range (webp caps at 6).
+	const efforted = await build_variant('tuning-effort', '?w=64&quality=60&effort=1');
+
+	expect(subsampled.equals(plain)).toBe(false);
+	expect(subsampled.length).toBeLessThan(plain.length);
+	expect(efforted.equals(plain)).toBe(false);
+}, 30_000);
+
 /**
  * @param {string} out_dir
  * @param {boolean} [dynamic]
