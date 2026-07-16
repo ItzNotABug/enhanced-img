@@ -1,0 +1,45 @@
+{
+	"name": "@itznotabug/emage-core",
+	"version": "0.2.0",
+	"description": "Framework-neutral Vite image engine for Emage adapters",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ItzNotABug/enhanced-img.git",
+		"directory": "packages/core"
+	},
+	"keywords": [
+		"image",
+		"optimization",
+		"plugin",
+		"responsive",
+		"vite"
+	],
+	"license": "Apache-2.0",
+	"type": "module",
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"LICENSE.md",
+		"NOTICE.md",
+		"src",
+		"types"
+	],
+	"exports": {
+		".": {
+			"types": "./types/index.d.ts",
+			"import": "./src/index.js",
+			"default": "./src/index.js"
+		}
+	},
+	"types": "./types/index.d.ts",
+	"dependencies": {
+		"picomatch": "4.0.5",
+		"sharp": "^0.34.1",
+		"tinyglobby": "^0.2.15",
+		"vite-imagetools": "^9.0.3"
+	},
+	"peerDependencies": {
+		"vite": "^6.3.0 || >=7.0.0"
+	}
+}

@@ -1,7 +1,7 @@
 .idea/
-LICENSE.md
-NOTICE.md
+**/LICENSE.md
+**/NOTICE.md
 .research/
 .integration-*/
 .hmr-*/
-test/Output.svelte
+test/adapters/svelte/fixtures/Output.svelte
