@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { imagetools } from 'vite-imagetools';
 import { extend_transforms, with_bounded_encodes } from './encode.js';
 
-const ORIGINAL_IMAGETOOLS_INCLUDE = /^[^?]+\.(avif|gif|heif|jpeg|jpg|png|tiff|webp)(\?.*)?$/;
+export const OPTIMIZABLE_IMAGE_PATTERN = /^[^?]+\.(avif|gif|heif|jpeg|jpg|png|tiff|webp)(\?.*)?$/;
 const DYNAMIC_IMAGETOOLS_INCLUDE = /^[^?]+\.(avif|gif|heif|jpeg|jpg|png|tiff|webp)(\?.*)?$/i;
 
 /**
@@ -89,7 +89,7 @@ function preserve_public_exclusion(plugin) {
 		},
 		async load(id) {
 			if (public_dir && is_file_beneath(id, public_dir)) return null;
-			if (!ORIGINAL_IMAGETOOLS_INCLUDE.test(id)) return null;
+			if (!OPTIMIZABLE_IMAGE_PATTERN.test(id)) return null;
 			if (!load) return null;
 			const handler = typeof load === 'object' ? load.handler : load;
 			return handler.call(this, id);

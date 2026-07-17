@@ -1,4 +1,5 @@
 export {
+	OPTIMIZABLE_IMAGE_PATTERN,
 	create_image_plugins,
 	load_picture,
 	parse_object,

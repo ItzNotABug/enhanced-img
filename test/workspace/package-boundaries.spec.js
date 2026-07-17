@@ -25,19 +25,23 @@ async function source_text(directory) {
 }
 
 describe('workspace package boundaries', () => {
-	it('keeps the workspace private and publishes two independent packages', async () => {
-		const [workspace, core, svelte] = await Promise.all([
+	it('keeps the workspace private and publishes three independent packages', async () => {
+		const [workspace, core, svelte, vue] = await Promise.all([
 			read_json('package.json'),
 			read_json('packages/core/package.json'),
-			read_json('packages/svelte/package.json')
+			read_json('packages/svelte/package.json'),
+			read_json('packages/vue/package.json')
 		]);
 
 		expect(workspace.private).toBe(true);
 		expect(workspace.workspaces).toEqual(['packages/*']);
 		expect(core.name).toBe('@itznotabug/emage-core');
 		expect(svelte.name).toBe('@itznotabug/emage-svelte');
+		expect(vue.name).toBe('@itznotabug/emage-vue');
 		expect(core.version).toBe(svelte.version);
+		expect(core.version).toBe(vue.version);
 		expect(svelte.dependencies['@itznotabug/emage-core']).toBe(core.version);
+		expect(vue.dependencies['@itznotabug/emage-core']).toBe(core.version);
 	});
 
 	it('keeps framework code and dependencies out of core', async () => {
@@ -50,8 +54,12 @@ describe('workspace package boundaries', () => {
 		};
 		const names = Object.keys(dependencies);
 
-		expect(names.some((name) => /^(?:svelte|@sveltejs\/|vue|@vue\/)/.test(name))).toBe(false);
-		expect(source).not.toMatch(/from\s+['"](?:svelte|svelte\/|@sveltejs\/|vue|@vue\/)/);
+		expect(
+			names.some((name) => /^(?:svelte|@sveltejs\/|vue|@vue\/|@vitejs\/plugin-vue)/.test(name))
+		).toBe(false);
+		expect(source).not.toMatch(
+			/from\s+['"](?:svelte|svelte\/|@sveltejs\/|vue|@vue\/|@vitejs\/plugin-vue)/
+		);
 		expect(source).not.toMatch(/\b(?:svelte|ConstTag|EachBlock)\b/i);
 	});
 
@@ -62,14 +70,25 @@ describe('workspace package boundaries', () => {
 		expect(source).not.toMatch(/from\s+['"](?:vue|@vue\/)/);
 	});
 
-	it('loads both workspace package exports', async () => {
-		const [core, svelte] = await Promise.all([
+	it('makes the Vue adapter consume only the public core entry', async () => {
+		const source = await source_text('packages/vue/src');
+		expect(source).toContain("from '@itznotabug/emage-core'");
+		expect(source).not.toMatch(/packages\/core\/src|@itznotabug\/emage-core\//);
+		expect(source).not.toMatch(/from\s+['"](?:svelte|svelte\/|@sveltejs\/)/);
+	});
+
+	it('loads all workspace package exports', async () => {
+		const [core, svelte, vue, vue_vite] = await Promise.all([
 			import('@itznotabug/emage-core'),
-			import('@itznotabug/emage-svelte')
+			import('@itznotabug/emage-svelte'),
+			import('@itznotabug/emage-vue'),
+			import('@itznotabug/emage-vue/vite')
 		]);
 
 		expect(core.create_image_plugins).toBeTypeOf('function');
 		expect(core.create_dynamic_virtual_modules).toBeTypeOf('function');
 		expect(svelte.enhancedImages).toBeTypeOf('function');
+		expect(vue.EnhancedImg).toBeTypeOf('object');
+		expect(vue_vite.enhancedImages).toBeTypeOf('function');
 	});
 });

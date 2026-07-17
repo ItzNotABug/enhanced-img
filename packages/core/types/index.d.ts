@@ -17,6 +17,7 @@ export interface ImagePlugins {
 	catalogPlugin: Plugin;
 }
 
+export const OPTIMIZABLE_IMAGE_PATTERN: RegExp;
 export function create_image_plugins(dynamicEnabled: boolean): ImagePlugins;
 export function load_picture(
 	resolvedId: string,

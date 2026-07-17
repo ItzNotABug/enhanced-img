@@ -7,6 +7,7 @@ import { parse as parse_markup } from 'svelte-parse-markup';
 import { walk } from 'zimmerframe';
 import {
 	CATALOG_MODULE_ID,
+	OPTIMIZABLE_IMAGE_PATTERN,
 	RUNTIME_MODULE_ID,
 	analyze_source,
 	canonicalize_public_query,
@@ -23,9 +24,6 @@ import {
 	render_composite_resolver
 } from '@itznotabug/emage-core';
 import { create_identifier_allocator, render_dynamic_image } from './dynamic/render.js';
-
-// TODO: expose this in vite-imagetools rather than duplicating it
-const OPTIMIZABLE = /^[^?]+\.(avif|heif|gif|jpeg|jpg|png|tiff|webp)(\?.*)?$/;
 
 /**
  * Creates the Svelte image plugin.
@@ -151,7 +149,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 					const original_url = src_attribute.raw.trim();
 					let url = original_url;
 
-					if (OPTIMIZABLE.test(url)) {
+					if (OPTIMIZABLE_IMAGE_PATTERN.test(url)) {
 						const sizes = get_attr_value(node, 'sizes');
 						const width = get_attr_value(node, 'width');
 						url += url.includes('?') ? '&' : '?';
@@ -180,7 +178,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 						);
 					}
 
-					if (OPTIMIZABLE.test(url)) {
+					if (OPTIMIZABLE_IMAGE_PATTERN.test(url)) {
 						const image = await load_picture(resolved_id, plugin_context, imagetools_plugin);
 						s.update(node.start, node.end, img_to_picture(content, node, image));
 					} else {
