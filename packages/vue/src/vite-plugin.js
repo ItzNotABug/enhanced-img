@@ -211,6 +211,8 @@ function create_transform_state(filename, shared) {
 		root_context: create_evaluation_context(parsed.program, { cap: EXPRESSION_CAP }),
 		contexts: new WeakMap(),
 		enhanced_imports: parsed.enhanced_imports,
+		emage_components: parsed.emage_components,
+		local_imports: parsed.local_imports,
 		profile_hashes: new Set(),
 		used_identifiers
 	};
@@ -224,6 +226,8 @@ function disabled_state() {
 		root_context: create_evaluation_context(),
 		contexts: new WeakMap(),
 		enhanced_imports: new Set(),
+		emage_components: new Set(),
+		local_imports: new Set(),
 		profile_hashes: new Set(),
 		used_identifiers: new Set()
 	};
@@ -299,7 +303,7 @@ function transform_source(
 	state,
 	shared
 ) {
-	if (node.tag !== 'EnhancedImg' && node.tag !== 'enhanced-img') return;
+	if (!is_emage_component(node.tag, compiler_context, state)) return;
 	const expression_source = source_binding.exp.loc?.source ?? source_binding.exp.content;
 	const expression = parse_expression(expression_source);
 	if (!expression || is_enhanced_import(expression, state.enhanced_imports)) return;
@@ -470,6 +474,17 @@ function is_enhanced_import(expression, imports) {
 	return expression.type === 'Identifier' && imports.has(expression.name);
 }
 
+/** @param {string} tag @param {any} compiler_context @param {TransformState} state */
+function is_emage_component(tag, compiler_context, state) {
+	const name = tag === 'enhanced-img' ? 'EnhancedImg' : tag;
+	if (state.emage_components.has(name)) return true;
+	if (name !== 'EnhancedImg') return false;
+	return (
+		!state.local_imports.has('EnhancedImg') &&
+		compiler_context.bindingMetadata?.EnhancedImg === undefined
+	);
+}
+
 /** @param {TransformState} state @param {string} hint */
 function allocate_identifier(state, hint) {
 	const base = `__eimg_${hint.replace(/[^A-Za-z0-9_$]/g, '_')}`;
@@ -490,20 +505,32 @@ function parse_owner_program(source, filename) {
 		: markdown_script_blocks(source);
 	const body = [];
 	const enhanced_imports = new Set();
+	const emage_components = new Set();
+	const local_imports = new Set();
 	for (const block of blocks) {
-		const program = parse_program(block);
+		const program = parse_program(block.source);
 		if (!program) continue;
-		body.push(...program.body);
+		if (block.evaluate) body.push(...program.body);
 		for (const statement of program.body) {
-			if (
-				statement.type !== 'ImportDeclaration' ||
-				typeof statement.source?.value !== 'string' ||
-				!/[?&]enhanced(?:[=&]|$)/.test(statement.source.value)
-			) {
-				continue;
-			}
+			if (statement.type !== 'ImportDeclaration' || statement.importKind === 'type') continue;
+			const import_source = statement.source?.value;
 			for (const specifier of statement.specifiers ?? []) {
-				if (specifier.type === 'ImportDefaultSpecifier') {
+				if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') continue;
+				local_imports.add(specifier.local.name);
+				if (
+					import_source === '@itznotabug/emage-vue' &&
+					specifier.type === 'ImportSpecifier' &&
+					specifier.imported.type === 'Identifier' &&
+					specifier.imported.name === 'EnhancedImg'
+				) {
+					emage_components.add(specifier.local.name);
+				}
+				if (
+					block.evaluate &&
+					typeof import_source === 'string' &&
+					/[?&]enhanced(?:[=&]|$)/.test(import_source) &&
+					specifier.type === 'ImportDefaultSpecifier'
+				) {
 					enhanced_imports.add(specifier.local.name);
 				}
 			}
@@ -511,7 +538,9 @@ function parse_owner_program(source, filename) {
 	}
 	return {
 		program: { type: 'Program', sourceType: 'module', body },
-		enhanced_imports
+		enhanced_imports,
+		emage_components,
+		local_imports
 	};
 }
 
@@ -519,15 +548,18 @@ function parse_owner_program(source, filename) {
 function vue_script_blocks(source, filename) {
 	if (!source) return [];
 	const parsed = parse_sfc(source, { filename });
-	const script = parsed.descriptor.scriptSetup?.content;
-	return typeof script === 'string' ? [script] : [];
+	return [
+		{ source: parsed.descriptor.script?.content, evaluate: false },
+		{ source: parsed.descriptor.scriptSetup?.content, evaluate: true }
+	].filter((block) => typeof block.source === 'string');
 }
 
 /** @param {string} source */
 function markdown_script_blocks(source) {
-	return [...source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
-		.filter((match) => /(?:^|\s)setup(?:\s|$|=)/i.test(match[1]))
-		.map((match) => match[2]);
+	return [...source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].map((match) => ({
+		source: match[2],
+		evaluate: /(?:^|\s)setup(?:\s|$|=)/i.test(match[1])
+	}));
 }
 
 /** @param {string} source */
@@ -589,6 +621,8 @@ function is_vue_owner(filename) {
  *   root_context: object,
  *   contexts: WeakMap<object, object>,
  *   enhanced_imports: Set<string>,
+ *   emage_components: Set<string>,
+ *   local_imports: Set<string>,
  *   profile_hashes: Set<string>,
  *   used_identifiers: Set<string>
  * }} TransformState

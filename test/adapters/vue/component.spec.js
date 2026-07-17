@@ -52,9 +52,29 @@ describe('EnhancedImg', () => {
 			expect(html).toContain('height="360"');
 		}
 	});
+
+	it('keeps parent scoped styles applicable to the nested image', async () => {
+		const html = await render(
+			{ src: picture, alt: 'Scoped image', class: 'hero' },
+			'data-v-parent'
+		);
+
+		expect(html).toContain('<picture data-v-parent>');
+		expect(html).toContain(
+			'<img alt="Scoped image" class="hero" src="/assets/hero.jpg" width="1280" height="720" data-v-parent>'
+		);
+	});
 });
 
-/** @param {import('@itznotabug/emage-vue').EnhancedImgProps} props */
-function render(props) {
-	return renderToString(createSSRApp({ render: () => h(EnhancedImg, props) }));
+/**
+ * @param {import('@itznotabug/emage-vue').EnhancedImgProps} props
+ * @param {string} [scope_id]
+ */
+function render(props, scope_id) {
+	return renderToString(
+		createSSRApp({
+			...(scope_id ? { __scopeId: scope_id } : {}),
+			render: () => h(EnhancedImg, props)
+		})
+	);
 }

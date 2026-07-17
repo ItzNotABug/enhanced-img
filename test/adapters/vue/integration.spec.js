@@ -32,8 +32,10 @@ beforeAll(async () => {
 			"import { createSSRApp } from 'vue'; import { renderToString } from 'vue/server-renderer'; import App from './App.vue'; export const renderApp = () => renderToString(createSSRApp(App));"
 		),
 		fs.writeFile(path.join(root, 'src/App.vue'), APP_SOURCE),
+		fs.writeFile(path.join(root, 'src/LocalCollision.vue'), LOCAL_COLLISION_SOURCE),
 		fs.writeFile(path.join(root, 'src/OptionsCollision.vue'), OPTIONS_COLLISION_SOURCE),
-		fs.writeFile(path.join(root, 'src/SlotCollector.vue'), SLOT_COLLECTOR_SOURCE)
+		fs.writeFile(path.join(root, 'src/SlotCollector.vue'), SLOT_COLLECTOR_SOURCE),
+		fs.writeFile(path.join(root, 'src/StringImage.vue'), STRING_IMAGE_SOURCE)
 	]);
 }, 20_000);
 
@@ -80,6 +82,7 @@ it('renders Picture and pass-through branches during SSR', async () => {
 	expect(html).toContain('alt="Second named slot"');
 	expect(html).toContain('src="https://example.com/photo.jpg?token=kept&amp;size=large"');
 	expect(html).toContain('src="/src/assets/missing.png"');
+	expect(html).toContain('src="/src/assets/red.png?w=7"');
 	expect(html).toContain('src="/literal.png"');
 	expect(html).not.toContain('virtual:enhanced-img');
 	expect(html).not.toContain('/@fs/');
@@ -135,6 +138,7 @@ async function read_tree(directory, base = directory) {
 const APP_SOURCE = `<script setup>
 import { EnhancedImg } from '@itznotabug/emage-vue';
 import staticImage from './assets/red.png?enhanced';
+import LocalCollision from './LocalCollision.vue';
 import OptionsCollision from './OptionsCollision.vue';
 import SlotCollector from './SlotCollector.vue';
 
@@ -154,8 +158,8 @@ const secondSlot = '/src/assets/blue.png?w=13';
 
 <template>
   <EnhancedImg :src="staticImage" alt="Static" />
-  <EnhancedImg
-    v-for="product in products"
+  <enhanced-img
+	    v-for="product in products"
     :key="product.name"
     :src="product.image"
     :alt="product.name"
@@ -164,6 +168,7 @@ const secondSlot = '/src/assets/blue.png?w=13';
   <EnhancedImg :src="remote" alt="Remote" />
   <EnhancedImg :src="missing" alt="Missing" />
   <EnhancedImg src="/literal.png" alt="Literal" />
+  <LocalCollision />
   <OptionsCollision />
   <SlotCollector>
     <template v-for="product in slotProducts" #[product.name]>
@@ -178,6 +183,17 @@ const secondSlot = '/src/assets/blue.png?w=13';
       <EnhancedImg :src="secondSlot" alt="Second named slot" />
     </template>
   </SlotCollector>
+</template>
+`;
+
+const LOCAL_COLLISION_SOURCE = `<script setup>
+import EnhancedImg from './StringImage.vue';
+
+const source = '/src/assets/red.png?w=7';
+</script>
+
+<template>
+  <EnhancedImg :src="source" />
 </template>
 `;
 
@@ -209,5 +225,14 @@ const slots = useSlots();
   <template v-for="(_, name) in slots" :key="name">
     <slot :name="name" />
   </template>
+</template>
+`;
+
+const STRING_IMAGE_SOURCE = `<script setup>
+defineProps({ src: { type: String, required: true } });
+</script>
+
+<template>
+  <img :src="src" alt="Local collision" />
 </template>
 `;

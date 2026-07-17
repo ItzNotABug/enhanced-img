@@ -1,4 +1,4 @@
-import { defineComponent, h } from 'vue';
+import { defineComponent, getCurrentInstance, h } from 'vue';
 
 /**
  * Render a vite-imagetools Picture without taking ownership of native image
@@ -14,6 +14,7 @@ export const EnhancedImg = defineComponent({
 		}
 	},
 	setup(props, { attrs }) {
+		const instance = getCurrentInstance();
 		return () => {
 			if (!is_picture(props.src)) {
 				return h('img', {
@@ -35,7 +36,10 @@ export const EnhancedImg = defineComponent({
 
 			return h('picture', null, [
 				...sources,
-				h('img', picture_img_attributes(image_attrs, props.src))
+				h('img', {
+					...picture_img_attributes(image_attrs, props.src),
+					...scope_attributes(instance?.vnode)
+				})
 			]);
 		};
 	}
@@ -92,4 +96,17 @@ function finite_number(value) {
 	const number =
 		typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
 	return Number.isFinite(number) ? number : undefined;
+}
+
+/** @param {{ scopeId?: unknown, slotScopeIds?: unknown } | undefined} vnode */
+function scope_attributes(vnode) {
+	/** @type {Record<string, ''>} */
+	const attributes = {};
+	if (typeof vnode?.scopeId === 'string') attributes[vnode.scopeId] = '';
+	if (Array.isArray(vnode?.slotScopeIds)) {
+		for (const id of vnode.slotScopeIds) {
+			if (typeof id === 'string') attributes[id] = '';
+		}
+	}
+	return attributes;
 }
