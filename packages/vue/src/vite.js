@@ -9,7 +9,7 @@ import { image_plugin } from './vite-plugin.js';
 export function enhancedImages(options) {
 	const normalized = normalize_options(options);
 	const dynamic_enabled = Boolean(normalized.dynamic);
-	const { publicPlugin, catalogPlugin } = create_image_plugins(dynamic_enabled);
+	const { publicPlugin, catalogPlugin } = create_image_plugins(dynamic_enabled, 'emage-vue');
 	return !process.versions.webcontainer
 		? [image_plugin(normalized, catalogPlugin), publicPlugin]
 		: [];

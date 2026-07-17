@@ -12,10 +12,11 @@ const DYNAMIC_IMAGETOOLS_INCLUDE = /^[^?]+\.(avif|gif|heif|jpeg|jpg|png|tiff|web
  * encode queue.
  *
  * @param {boolean} dynamic_enabled
+ * @param {string} [log_label]
  * @returns {{ publicPlugin: import('vite').Plugin, catalogPlugin: import('vite').Plugin }}
  */
-export function create_image_plugins(dynamic_enabled) {
-	const catalog_plugin = imagetools_plugin(dynamic_enabled);
+export function create_image_plugins(dynamic_enabled, log_label = 'emage') {
+	const catalog_plugin = imagetools_plugin(dynamic_enabled, log_label);
 	return {
 		publicPlugin: dynamic_enabled ? preserve_public_exclusion(catalog_plugin) : catalog_plugin,
 		catalogPlugin: catalog_plugin
@@ -127,8 +128,8 @@ function fallback_format(meta) {
 	return 'jpg';
 }
 
-/** @param {boolean} allow_public */
-function imagetools_plugin(allow_public = false) {
+/** @param {boolean} allow_public @param {string} log_label */
+function imagetools_plugin(allow_public = false, log_label = 'emage') {
 	/** @type {Partial<import('vite-imagetools').VitePluginOptions>} */
 	const imagetools_opts = {
 		...(allow_public && {
@@ -159,7 +160,7 @@ function imagetools_plugin(allow_public = false) {
 		extendTransforms: extend_transforms
 	};
 
-	return with_bounded_encodes(imagetools(imagetools_opts));
+	return with_bounded_encodes(imagetools(imagetools_opts), { label: log_label });
 }
 
 /**

@@ -1,5 +1,6 @@
 import { EnhancedImg, type EnhancedImgProps, type Picture } from '@itznotabug/emage-vue';
 import { enhancedImages, type EnhancedImagesOptions } from '@itznotabug/emage-vue/vite';
+import type { PluginOption } from 'vite';
 import type { GlobalComponents } from 'vue';
 
 enhancedImages();
@@ -8,6 +9,7 @@ enhancedImages({ dynamic: ['src/assets/**', '!src/assets/drafts/**'] });
 
 const options: EnhancedImagesOptions = { dynamic: ['public/images/**/*.png'] };
 enhancedImages(options);
+const plugins: PluginOption[] = enhancedImages(options);
 
 declare const picture: Picture;
 const imported: EnhancedImgProps = { src: picture, alt: 'Imported' };
@@ -17,6 +19,7 @@ void EnhancedImg;
 void imported;
 void catalogued;
 void locally_registered;
+void plugins;
 
 // @ts-expect-error src is required
 const missing: EnhancedImgProps = { alt: 'Missing' };

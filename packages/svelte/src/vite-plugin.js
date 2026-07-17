@@ -42,7 +42,8 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 				options,
 				imagetoolsPlugin: dynamic_imagetools_plugin ?? imagetools_plugin,
 				isOwner: (filename) => filename.endsWith('.svelte'),
-				ownerKey: module_runtime_key
+				ownerKey: module_runtime_key,
+				logLabel: 'emage-svelte'
 			})
 		: undefined;
 
@@ -414,7 +415,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 			return dynamic_engine.load_with_context(this, id);
 		};
 		plugin.handleHotUpdate = (context) => dynamic_engine.handle_hot_update(context);
-		plugin.buildEnd = (error) => dynamic_engine.build_end(error);
+		plugin.writeBundle = () => dynamic_engine.write_bundle();
 		plugin.closeBundle = () => dynamic_engine.close_bundle();
 	}
 

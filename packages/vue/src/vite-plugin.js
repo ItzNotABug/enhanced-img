@@ -40,7 +40,8 @@ export function image_plugin(options, imagetools_plugin) {
 		options,
 		imagetoolsPlugin: imagetools_plugin,
 		isOwner: is_vue_owner,
-		ownerKey: module_runtime_key
+		ownerKey: module_runtime_key,
+		logLabel: 'emage-vue'
 	});
 
 	const node_transform = create_node_transform({
@@ -87,8 +88,8 @@ export function image_plugin(options, imagetools_plugin) {
 			owner_sources.delete(clean_filename(context.file));
 			dynamic_engine.handle_hot_update(context);
 		},
-		buildEnd(error) {
-			dynamic_engine.build_end(error);
+		writeBundle() {
+			dynamic_engine.write_bundle();
 		},
 		closeBundle() {
 			dynamic_engine.close_bundle();

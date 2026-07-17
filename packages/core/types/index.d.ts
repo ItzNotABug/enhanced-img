@@ -18,7 +18,7 @@ export interface ImagePlugins {
 }
 
 export const OPTIMIZABLE_IMAGE_PATTERN: RegExp;
-export function create_image_plugins(dynamicEnabled: boolean): ImagePlugins;
+export function create_image_plugins(dynamicEnabled: boolean, logLabel?: string): ImagePlugins;
 export function load_picture(
 	resolvedId: string,
 	pluginContext: Rollup.PluginContext,
@@ -175,7 +175,7 @@ export interface DynamicImageEngine {
 		id: string
 	): Promise<Rollup.LoadResult> | undefined;
 	handle_hot_update(context: import('vite').HmrContext): void;
-	build_end(error?: Error): void;
+	write_bundle(): void;
 	close_bundle(): void;
 }
 
@@ -184,6 +184,7 @@ export function create_dynamic_image_engine(config: {
 	imagetoolsPlugin: Plugin;
 	isOwner: (filename: string) => boolean;
 	ownerKey: (filename: string, root: string) => string;
+	logLabel?: string;
 }): DynamicImageEngine;
 
 export function render_composite_resolver(

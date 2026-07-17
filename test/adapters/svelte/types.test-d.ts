@@ -4,6 +4,7 @@ import {
 	type EnhancedImgAttributes,
 	type Picture
 } from '@itznotabug/emage-svelte';
+import type { PluginOption } from 'vite';
 
 enhancedImages();
 enhancedImages({ dynamic: 'src/assets/**/*.jpg' });
@@ -11,12 +12,14 @@ enhancedImages({ dynamic: ['src/assets/**', '!src/assets/drafts/**'] });
 
 const options: EnhancedImagesOptions = { dynamic: ['public/images/**/*.png'] };
 enhancedImages(options);
+const plugins: PluginOption[] = enhancedImages(options);
 
 declare const picture: Picture;
 const imported: EnhancedImgAttributes = { src: picture, alt: 'Imported' };
 const catalogued: EnhancedImgAttributes = { src: '/images/runtime.jpg', alt: 'Catalogued' };
 void imported;
 void catalogued;
+void plugins;
 
 // @ts-expect-error unknown options are rejected
 enhancedImages({ queries: [] });

@@ -1,13 +1,13 @@
 import os from 'node:os';
 import process from 'node:process';
 import { getMetadata, setMetadata } from 'vite-imagetools';
+import { format_emage_log } from './logger.js';
 
 const IMAGE_QUERY_ID = /^[^?]+\.(avif|gif|heif|jpeg|jpg|png|tiff|webp)\?./i;
 // Vite-owned asset queries load instantly and must not wait behind encodes.
 const PASSTHROUGH_QUERY = /\?(?:url|raw|inline|no-inline|worker|sharedworker)$/;
 const CHROMA_FORMATS = new Set(['avif', 'heif', 'jpg', 'jpeg']);
 const CHROMA_VALUES = new Set(['4:2:0', '4:4:4']);
-const PROGRESS_INTERVAL = 25;
 
 /**
  * Add the `chromaSubsampling` directive to the built-in vite-imagetools
@@ -95,66 +95,53 @@ export function create_semaphore(limit) {
 	};
 }
 
-// Clears the current terminal line: rolldown/rollup write their transient
-// "transforming (n) ..." status without a trailing newline.
-const CLEAR_LINE = '\r\x1b[2K';
-
 /**
- * Bound the plugin's image loads with a semaphore and report build progress.
+ * Bound the plugin's image loads with a semaphore and report a build summary.
  * Every enhanced image — literal or dynamic-catalog — flows through this load
  * hook, so this is the single choke point for encode work.
  *
- * Interactive terminals get one self-erasing progress line so only the final
- * catalog summary survives in scrollback; captured logs (CI, deploy consoles)
- * get durable heartbeat lines instead, where overwriting is impossible and
- * long encode phases would otherwise look like hangs.
- *
  * @param {import('vite').Plugin} plugin
- * @param {{ concurrency?: number, interactive?: boolean }} [options]
+ * @param {{ concurrency?: number, label?: string }} [options]
  * @returns {import('vite').Plugin}
  */
 export function with_bounded_encodes(plugin, options = {}) {
 	const run = create_semaphore(options.concurrency ?? default_encode_concurrency());
-	const interactive = options.interactive ?? Boolean(process.stdout.isTTY);
+	const label = options.label ?? 'emage';
 	const original_config_resolved = plugin.configResolved;
 	const original_load = plugin.load;
 	const original_build_end = plugin.buildEnd;
+	const original_write_bundle = plugin.writeBundle;
 
 	let is_build = false;
+	let is_ssr_build = false;
 	let verbose = true;
-	/** @type {Pick<import('vite').Logger, 'info'> | undefined} */
-	let logger;
 	let processed = 0;
 	let started = 0;
-	let rendered = false;
-
-	/** @param {number} count */
-	function report_progress(count) {
-		if (interactive) {
-			if (!verbose) return;
-			rendered = true;
-			process.stdout.write(`${CLEAR_LINE}@itznotabug/emage-core: processed ${count} images...`);
-		} else if (count % PROGRESS_INTERVAL === 0) {
-			logger?.info(`@itznotabug/emage-core: processed ${count} images...`);
-		}
-	}
 
 	function report_done() {
-		if (interactive) {
-			if (rendered) process.stdout.write(CLEAR_LINE);
-			rendered = false;
-		} else if (processed > 0) {
-			const seconds = Math.round((Date.now() - started) / 100) / 10;
-			logger?.info(`@itznotabug/emage-core: processed ${processed} images in ${seconds}s`);
-		}
+		if (!verbose || processed === 0 || is_ssr_build) return;
+		const seconds = Math.round((Date.now() - started) / 100) / 10;
+		if (process.stdout.isTTY) process.stdout.write('\r\x1b[2K');
+		console.log(
+			format_emage_log(
+				label,
+				`optimized ${processed} ${processed === 1 ? 'image' : 'images'} in ${seconds}s`,
+				'success'
+			)
+		);
+	}
+
+	function reset_progress() {
+		processed = 0;
+		started = 0;
 	}
 
 	return {
 		...plugin,
 		configResolved(config) {
 			is_build = config.command === 'build';
-			verbose = (config.logLevel ?? 'info') === 'info';
-			logger = config.logger;
+			is_ssr_build = Boolean(config.build?.ssr);
+			verbose = config.logLevel !== 'silent';
 			if (!original_config_resolved) return;
 			const handler =
 				typeof original_config_resolved === 'object'
@@ -171,22 +158,33 @@ export function with_bounded_encodes(plugin, options = {}) {
 
 			const context = this;
 			return run(async () => {
+				if (processed === 0 && started === 0) started = Date.now();
 				const result = await handler.call(context, id);
 				if (result != null) {
-					if (processed === 0) started = Date.now();
 					processed++;
-					if (is_build) report_progress(processed);
 				}
 				return result;
 			});
 		},
 		buildEnd(error) {
-			if (is_build) report_done();
-			processed = 0;
+			if (error && is_build) reset_progress();
 			if (!original_build_end) return;
 			const handler =
 				typeof original_build_end === 'object' ? original_build_end.handler : original_build_end;
 			return handler.call(this, error);
+		},
+		async writeBundle(options, bundle) {
+			let result;
+			if (original_write_bundle) {
+				const handler =
+					typeof original_write_bundle === 'object'
+						? original_write_bundle.handler
+						: original_write_bundle;
+				result = await handler.call(this, options, bundle);
+			}
+			if (is_build) report_done();
+			reset_progress();
+			return result;
 		}
 	};
 }
