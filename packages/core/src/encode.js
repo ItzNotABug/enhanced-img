@@ -54,7 +54,7 @@ function chroma_subsampling(config, context) {
  * @returns {number}
  */
 export function default_encode_concurrency(env = process.env) {
-	const parsed = Number.parseInt(env.ENHANCED_IMG_ENCODE_CONCURRENCY ?? '', 10);
+	const parsed = Number.parseInt(env.EMAGE_ENCODE_CONCURRENCY ?? '', 10);
 	if (Number.isInteger(parsed) && parsed > 0) return parsed;
 	const cores =
 		typeof os.availableParallelism === 'function'

@@ -39,7 +39,8 @@
 	},
 	"types": "./types/index.d.ts",
 	"dependencies": {
-		"@itznotabug/emage-core": "0.2.0"
+		"@itznotabug/emage-core": "0.2.0",
+		"markdown-it": "^14.1.0"
 	},
 	"peerDependencies": {
 		"@vitejs/plugin-vue": "^5.2.0 || ^6.0.0",

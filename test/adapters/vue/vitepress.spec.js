@@ -14,9 +14,9 @@ const require = createRequire(import.meta.url);
 let root;
 
 beforeAll(async () => {
-	root = await fs.mkdtemp(path.join(workspace_root, '.vitepress-integration-'));
+	root = await fs.mkdtemp(path.join(workspace_root, '.integration-vitepress-'));
 	await Promise.all([
-		fs.mkdir(path.join(root, '.vitepress'), { recursive: true }),
+		fs.mkdir(path.join(root, '.vitepress/theme'), { recursive: true }),
 		fs.mkdir(path.join(root, 'assets'), { recursive: true }),
 		fs.mkdir(path.join(root, 'public/images'), { recursive: true })
 	]);
@@ -29,16 +29,19 @@ beforeAll(async () => {
 			alpha: 1
 		}),
 		fs.writeFile(path.join(root, '.vitepress/config.mjs'), CONFIG_SOURCE),
-		fs.writeFile(path.join(root, 'index.md'), PAGE_SOURCE)
+		fs.writeFile(path.join(root, '.vitepress/theme/index.mjs'), THEME_SOURCE),
+		fs.writeFile(path.join(root, 'index.md'), PAGE_SOURCE),
+		fs.writeFile(path.join(root, 'fenced.md'), FENCED_PAGE_SOURCE),
+		fs.writeFile(path.join(root, 'inline.md'), INLINE_PAGE_SOURCE)
 	]);
-}, 20_000);
+	await build_vitepress(root);
+}, 30_000);
 
 afterAll(async () => {
 	if (root) await fs.rm(root, { recursive: true, force: true });
 });
 
 it('enhances imported and runtime-selected images in VitePress Markdown', async () => {
-	await build_vitepress(root);
 	const output = path.join(root, '.vitepress/dist');
 	const html = await fs.readFile(path.join(output, 'index.html'), 'utf8');
 	const files = await read_filenames(output);
@@ -52,6 +55,17 @@ it('enhances imported and runtime-selected images in VitePress Markdown', async 
 	expect(html).not.toContain('virtual:enhanced-img');
 	expect(html).not.toContain('/@fs/');
 	expect(html).not.toContain(root);
+}, 30_000);
+
+it('ignores component imports shown in Markdown code examples', async () => {
+	const output = path.join(root, '.vitepress/dist');
+	const [fenced_html, inline_html] = await Promise.all([
+		fs.readFile(path.join(output, 'fenced.html'), 'utf8'),
+		fs.readFile(path.join(output, 'inline.html'), 'utf8')
+	]);
+
+	expect(fenced_html).toMatch(/<picture>.*?alt="Fenced example".*?<\/picture>/s);
+	expect(inline_html).toMatch(/<picture>.*?alt="Inline example".*?<\/picture>/s);
 }, 30_000);
 
 /** @param {string} site_root */
@@ -97,6 +111,17 @@ export default defineConfig({
 });
 `;
 
+const THEME_SOURCE = `import DefaultTheme from 'vitepress/theme';
+import { EnhancedImg } from '@itznotabug/emage-vue';
+
+export default {
+  extends: DefaultTheme,
+  enhanceApp({ app }) {
+    app.component('EnhancedImg', EnhancedImg);
+  }
+};
+`;
+
 const PAGE_SOURCE = `<script setup>
 import { EnhancedImg } from '@itznotabug/emage-vue';
 import staticImage from './assets/static.png?enhanced';
@@ -110,4 +135,52 @@ const remoteImage = 'https://example.com/docs.png?token=kept&size=large';
 <EnhancedImg :src="staticImage" alt="Static" />
 <EnhancedImg :src="runtimeImage" alt="Runtime" sizes="100vw" />
 <EnhancedImg :src="remoteImage" alt="Remote" />
+`;
+
+const FENCED_PAGE_SOURCE = `<script setup>
+const runtimeImage = '/images/runtime.png';
+</script>
+
+# Fenced example
+
+<EnhancedImg :src="runtimeImage" alt="Fenced example" sizes="100vw" />
+
+\`\`\`vue
+<script setup>
+import EnhancedImg from './Example.vue';
+</script>
+\`\`\`
+
+- \`\`\`vue
+  <script setup>
+  import EnhancedImg from './ListExample.vue';
+  </script>
+  \`\`\`
+
+> ~~~vue
+> <script setup>
+> import EnhancedImg from './QuoteExample.vue';
+> </script>
+> ~~~
+
+    <script setup>
+    import EnhancedImg from './IndentedExample.vue';
+    </script>
+`;
+
+const INLINE_PAGE_SOURCE = `# Inline example
+
+Use \`<script setup>\` to add component-local bindings.
+
+An unmatched \` remains ordinary text in this paragraph.
+
+<script setup lang="ts" generic="T extends Record<string, unknown>">
+const runtimeImage = \`/images/runtime.png\`;
+</script>
+
+Another unmatched \` remains ordinary text in a separate paragraph.
+
+<EnhancedImg :src="runtimeImage" alt="Inline example" sizes="100vw" />
+
+\`<script setup>import EnhancedImg from './Example.vue';<\/script>\`
 `;

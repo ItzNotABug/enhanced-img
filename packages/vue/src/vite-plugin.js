@@ -14,11 +14,13 @@ import {
 	module_runtime_key,
 	render_composite_resolver
 } from '@itznotabug/emage-core';
+import MarkdownIt from 'markdown-it';
 import { babelParse, parse as parse_sfc } from 'vue/compiler-sfc';
 
 const RESOLVER_PREFIX = 'virtual:emage-vue/resolver/';
 const RESOLVED_RESOLVER_PREFIX = `\0${RESOLVER_PREFIX}`;
 const EXPRESSION_CAP = 32;
+const MARKDOWN_PARSER = new MarkdownIt({ html: true });
 
 /**
  * @param {Readonly<{ dynamic?: readonly string[] }>} options
@@ -350,7 +352,7 @@ function transform_source(
 		if (!shared.warned_sizes.has(key)) {
 			shared.warned_sizes.add(key);
 			shared.config.logger.warn(
-				`@itznotabug/emage-vue: ${state.owner} uses a dynamic sizes attribute; it is rendered, but the default generated width ladder is used`
+				`[emage-vue] ${state.owner} uses a dynamic sizes attribute; it is rendered, but the default generated width ladder is used`
 			);
 		}
 	}
@@ -503,7 +505,7 @@ function allocate_identifier(state, hint) {
 function parse_owner_program(source, filename) {
 	const blocks = filename.endsWith('.vue')
 		? vue_script_blocks(source, filename)
-		: markdown_script_blocks(source);
+		: markdown_script_blocks(source, filename);
 	const body = [];
 	const enhanced_imports = new Set();
 	const emage_components = new Set();
@@ -555,12 +557,14 @@ function vue_script_blocks(source, filename) {
 	].filter((block) => typeof block.source === 'string');
 }
 
-/** @param {string} source */
-function markdown_script_blocks(source) {
-	return [...source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].map((match) => ({
-		source: match[2],
-		evaluate: /(?:^|\s)setup(?:\s|$|=)/i.test(match[1])
-	}));
+/** @param {string} source @param {string} filename */
+function markdown_script_blocks(source, filename) {
+	const blocks = [];
+	for (const token of MARKDOWN_PARSER.parse(source, {})) {
+		if (token.type !== 'html_block' || !/^\s*<script(?=\s|>)/i.test(token.content)) continue;
+		blocks.push(...vue_script_blocks(token.content, filename));
+	}
+	return blocks;
 }
 
 /** @param {string} source */

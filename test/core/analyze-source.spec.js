@@ -119,7 +119,7 @@ describe('dynamic src analysis', () => {
 			});
 		} catch (error) {
 			expect(error).toMatchObject({
-				code: 'ENHANCED_IMG_QUERY_VARIANT_LIMIT',
+				code: 'EMAGE_QUERY_VARIANT_LIMIT',
 				count: 33,
 				cap: 32,
 				exact: true,
@@ -196,7 +196,7 @@ describe('dynamic src analysis', () => {
 			expect.fail('expected a query variant error');
 		} catch (error) {
 			expect(error).toMatchObject({
-				code: 'ENHANCED_IMG_QUERY_VARIANT_LIMIT',
+				code: 'EMAGE_QUERY_VARIANT_LIMIT',
 				count: 33,
 				exact: false
 			});

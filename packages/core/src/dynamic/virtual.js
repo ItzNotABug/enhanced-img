@@ -14,7 +14,7 @@ const RESOLVED_RUNTIME_MODULE_ID = `\0${RUNTIME_MODULE_ID}`;
 /**
  * @typedef {import('./paths.js').SerializableAlias} SerializableAlias
  * @typedef {{ key?: string, keys?: readonly string[], source: string, file?: string }} VirtualCandidate
- * @typedef {{ publicQuery?: string, query?: string, internalQuery?: string, sizes?: string | number | null, width?: string | number | null, patterns?: readonly string[], schemaVersion?: number }} VirtualProfileInput
+ * @typedef {{ publicQuery?: string, query?: string, sizes?: string | number | null, width?: string | number | null, patterns?: readonly string[], schemaVersion?: number }} VirtualProfileInput
  * @typedef {{ imagetools_plugin: import('vite').Plugin, candidates?: readonly VirtualCandidate[], get_candidates?: () => readonly VirtualCandidate[], patterns?: readonly string[], aliases?: readonly SerializableAlias[], runtime?: { aliases?: readonly SerializableAlias[] } }} DynamicVirtualModuleOptions
  */
 

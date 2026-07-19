@@ -136,7 +136,6 @@ export interface DynamicVirtualModules {
 	register_profile(input: {
 		publicQuery?: string;
 		query?: string;
-		internalQuery?: string;
 		sizes?: string | number | null;
 		width?: string | number | null;
 		patterns?: readonly string[];

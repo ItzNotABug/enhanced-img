@@ -258,7 +258,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 						if (!component_warnings.has(warning_key)) {
 							component_warnings.add(warning_key);
 							plugin_context.warn(
-								`@itznotabug/emage-svelte: ${importer} uses a dynamic sizes attribute; it is rendered, but the default generated width ladder is used`
+								`[emage-svelte] ${importer} uses a dynamic sizes attribute; it is rendered, but the default generated width ladder is used`
 							);
 						}
 					}

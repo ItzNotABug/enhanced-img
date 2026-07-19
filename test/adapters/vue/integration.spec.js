@@ -12,7 +12,7 @@ import { workspace_root } from '#test/support/workspace.js';
 let root;
 
 beforeAll(async () => {
-	root = await fs.mkdtemp(path.join(workspace_root, '.vue-integration-'));
+	root = await fs.mkdtemp(path.join(workspace_root, '.integration-vue-'));
 	await fs.mkdir(path.join(root, 'src/assets'), { recursive: true });
 	await Promise.all([
 		write_image(path.join(root, 'src/assets/red.png'), { r: 255, g: 0, b: 0, alpha: 1 }),
@@ -159,7 +159,7 @@ const secondSlot = '/src/assets/blue.png?w=13';
 <template>
   <EnhancedImg :src="staticImage" alt="Static" />
   <enhanced-img
-	    v-for="product in products"
+    v-for="product in products"
     :key="product.name"
     :src="product.image"
     :alt="product.name"

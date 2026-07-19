@@ -60,12 +60,12 @@ describe('create_semaphore', () => {
 
 describe('default_encode_concurrency', () => {
 	it('prefers a valid environment override', () => {
-		expect(default_encode_concurrency({ ENHANCED_IMG_ENCODE_CONCURRENCY: '3' })).toBe(3);
+		expect(default_encode_concurrency({ EMAGE_ENCODE_CONCURRENCY: '3' })).toBe(3);
 	});
 
 	it('falls back to the machine core count for invalid overrides', () => {
 		for (const value of [undefined, '0', '-2', 'lots']) {
-			const concurrency = default_encode_concurrency({ ENHANCED_IMG_ENCODE_CONCURRENCY: value });
+			const concurrency = default_encode_concurrency({ EMAGE_ENCODE_CONCURRENCY: value });
 			expect(Number.isInteger(concurrency)).toBe(true);
 			expect(concurrency).toBeGreaterThanOrEqual(1);
 		}
