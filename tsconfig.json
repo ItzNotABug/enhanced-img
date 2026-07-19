@@ -6,14 +6,15 @@
 		"target": "es2022",
 		"module": "node16",
 		"moduleResolution": "node16",
-		"paths": {
-			"types": ["./types/index"],
-			"types/*": ["./types/*"]
-		},
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"types": ["node"]
 	},
-	"include": ["src/**/*", "types/**/*", "test/**/*.spec.js", "test/**/*.test-d.ts"],
-	"exclude": [".research", "node_modules", "test/apps"]
+	"include": [
+		"packages/*/src/**/*",
+		"packages/*/types/**/*",
+		"test/**/*.spec.js",
+		"test/**/*.test-d.ts"
+	],
+	"exclude": [".research", "node_modules"]
 }
