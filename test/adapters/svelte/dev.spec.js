@@ -150,11 +150,14 @@ it('reflects the final catalog in a fresh SSR render', async () => {
  * @param {{ r: number, g: number, b: number }} background
  */
 async function write_image(file, width, height, background) {
+	const target = path.join(assets, file);
+	const temporary = `${target}.${process.pid}.tmp`;
 	await sharp({
 		create: { width, height, channels: 4, background: { ...background, alpha: 1 } }
 	})
 		.png()
-		.toFile(path.join(assets, file));
+		.toFile(temporary);
+	await fs.rename(temporary, target);
 }
 
 /** @param {string} url */
