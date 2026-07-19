@@ -39,7 +39,9 @@ jobs:
         run: |
           core=$(node -p "require('./packages/core/package.json').version")
           svelte=$(node -p "require('./packages/svelte/package.json').version")
+          vue=$(node -p "require('./packages/vue/package.json').version")
           test "$core" = "$svelte"
+          test "$core" = "$vue"
           test "$GITHUB_REF_NAME" = "v$core"
 
       - name: Publish core
@@ -49,3 +51,7 @@ jobs:
       - name: Publish Svelte adapter
         run: npm publish
         working-directory: packages/svelte
+
+      - name: Publish Vue adapter
+        run: npm publish
+        working-directory: packages/vue

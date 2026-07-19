@@ -7,6 +7,7 @@ import { parse as parse_markup } from 'svelte-parse-markup';
 import { walk } from 'zimmerframe';
 import {
 	CATALOG_MODULE_ID,
+	OPTIMIZABLE_IMAGE_PATTERN,
 	RUNTIME_MODULE_ID,
 	analyze_source,
 	canonicalize_public_query,
@@ -23,9 +24,6 @@ import {
 	render_composite_resolver
 } from '@itznotabug/emage-core';
 import { create_identifier_allocator, render_dynamic_image } from './dynamic/render.js';
-
-// TODO: expose this in vite-imagetools rather than duplicating it
-const OPTIMIZABLE = /^[^?]+\.(avif|heif|gif|jpeg|jpg|png|tiff|webp)(\?.*)?$/;
 
 /**
  * Creates the Svelte image plugin.
@@ -44,7 +42,8 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 				options,
 				imagetoolsPlugin: dynamic_imagetools_plugin ?? imagetools_plugin,
 				isOwner: (filename) => filename.endsWith('.svelte'),
-				ownerKey: module_runtime_key
+				ownerKey: module_runtime_key,
+				logLabel: 'emage-svelte'
 			})
 		: undefined;
 
@@ -151,7 +150,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 					const original_url = src_attribute.raw.trim();
 					let url = original_url;
 
-					if (OPTIMIZABLE.test(url)) {
+					if (OPTIMIZABLE_IMAGE_PATTERN.test(url)) {
 						const sizes = get_attr_value(node, 'sizes');
 						const width = get_attr_value(node, 'width');
 						url += url.includes('?') ? '&' : '?';
@@ -180,7 +179,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 						);
 					}
 
-					if (OPTIMIZABLE.test(url)) {
+					if (OPTIMIZABLE_IMAGE_PATTERN.test(url)) {
 						const image = await load_picture(resolved_id, plugin_context, imagetools_plugin);
 						s.update(node.start, node.end, img_to_picture(content, node, image));
 					} else {
@@ -259,7 +258,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 						if (!component_warnings.has(warning_key)) {
 							component_warnings.add(warning_key);
 							plugin_context.warn(
-								`@itznotabug/emage-svelte: ${importer} uses a dynamic sizes attribute; it is rendered, but the default generated width ladder is used`
+								`[emage-svelte] ${importer} uses a dynamic sizes attribute; it is rendered, but the default generated width ladder is used`
 							);
 						}
 					}
@@ -416,7 +415,7 @@ export function image_plugin(imagetools_plugin, _options, dynamic_imagetools_plu
 			return dynamic_engine.load_with_context(this, id);
 		};
 		plugin.handleHotUpdate = (context) => dynamic_engine.handle_hot_update(context);
-		plugin.buildEnd = (error) => dynamic_engine.build_end(error);
+		plugin.writeBundle = () => dynamic_engine.write_bundle();
 		plugin.closeBundle = () => dynamic_engine.close_bundle();
 	}
 

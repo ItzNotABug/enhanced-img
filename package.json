@@ -2,7 +2,7 @@
 	"name": "emage-workspace",
 	"private": true,
 	"version": "0.2.0",
-	"description": "Framework-neutral image tooling with Svelte and future framework adapters",
+	"description": "Framework-neutral image tooling with Svelte and Vue adapters",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/ItzNotABug/enhanced-img.git"
@@ -13,6 +13,7 @@
 	"imports": {
 		"#core/*": "./packages/core/src/*",
 		"#svelte/*": "./packages/svelte/src/*",
+		"#vue/*": "./packages/vue/src/*",
 		"#test/*": "./test/*"
 	},
 	"workspaces": [
@@ -23,16 +24,19 @@
 		"check": "tsc",
 		"format": "prettier --write --cache .",
 		"test": "bun run check && bun run test:unit && bun run test:integration",
-		"test:unit": "vitest run --exclude test/adapters/svelte/integration.spec.js --exclude test/adapters/svelte/dev.spec.js",
-		"test:integration": "vitest run test/adapters/svelte/integration.spec.js test/adapters/svelte/dev.spec.js",
+		"test:unit": "vitest run --exclude test/adapters/svelte/integration.spec.js --exclude test/adapters/svelte/dev.spec.js --exclude test/adapters/vue/integration.spec.js --exclude test/adapters/vue/vitepress.spec.js",
+		"test:integration": "vitest run test/adapters/svelte/integration.spec.js test/adapters/svelte/dev.spec.js test/adapters/vue/integration.spec.js test/adapters/vue/vitepress.spec.js",
 		"verify": "bun run lint && bun run test"
 	},
 	"devDependencies": {
 		"@itznotabug/emage-core": "workspace:*",
 		"@itznotabug/emage-svelte": "workspace:*",
+		"@itznotabug/emage-vue": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "6.2.4",
 		"@types/estree": "^1.0.8",
+		"@types/markdown-it": "^14.1.2",
 		"@types/node": "^22.15.0",
+		"@vitejs/plugin-vue": "6.0.8",
 		"prettier": "^3.5.3",
 		"prettier-plugin-svelte": "4.1.1",
 		"rollup": "^4.59.0",
@@ -41,6 +45,8 @@
 		"typescript": "^5.8.3",
 		"vite": "^7.0.0",
 		"vite-imagetools": "^9.0.3",
-		"vitest": "^3.2.4"
+		"vitepress": "1.6.4",
+		"vitest": "^3.2.4",
+		"vue": "3.5.40"
 	}
 }

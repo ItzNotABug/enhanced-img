@@ -60,12 +60,12 @@ describe('create_semaphore', () => {
 
 describe('default_encode_concurrency', () => {
 	it('prefers a valid environment override', () => {
-		expect(default_encode_concurrency({ ENHANCED_IMG_ENCODE_CONCURRENCY: '3' })).toBe(3);
+		expect(default_encode_concurrency({ EMAGE_ENCODE_CONCURRENCY: '3' })).toBe(3);
 	});
 
 	it('falls back to the machine core count for invalid overrides', () => {
 		for (const value of [undefined, '0', '-2', 'lots']) {
-			const concurrency = default_encode_concurrency({ ENHANCED_IMG_ENCODE_CONCURRENCY: value });
+			const concurrency = default_encode_concurrency({ EMAGE_ENCODE_CONCURRENCY: value });
 			expect(Number.isInteger(concurrency)).toBe(true);
 			expect(concurrency).toBeGreaterThanOrEqual(1);
 		}
@@ -136,12 +136,11 @@ describe('chromaSubsampling directive', () => {
 });
 
 describe('with_bounded_encodes', () => {
-	/** @param {{ load: (id: string) => unknown, concurrency?: number, interactive?: boolean, logLevel?: string }} options */
-	function create_wrapped({ load, concurrency = 2, interactive = false, logLevel = 'info' }) {
+	/** @param {{ load: (id: string) => unknown, concurrency?: number, logLevel?: string }} options */
+	function create_wrapped({ load, concurrency = 2, logLevel = 'info' }) {
 		const info = vi.fn();
 		const plugin = with_bounded_encodes(/** @type {any} */ ({ name: 'fake-imagetools', load }), {
-			concurrency,
-			interactive
+			concurrency
 		});
 		const config_resolved =
 			typeof plugin.configResolved === 'object'
@@ -149,7 +148,12 @@ describe('with_bounded_encodes', () => {
 				: plugin.configResolved;
 		config_resolved?.call(
 			/** @type {any} */ ({}),
-			/** @type {any} */ ({ command: 'build', logLevel, logger: { info } })
+			/** @type {any} */ ({
+				command: 'build',
+				build: { ssr: false },
+				logLevel,
+				logger: { info }
+			})
 		);
 		return { plugin, info };
 	}
@@ -189,71 +193,45 @@ describe('with_bounded_encodes', () => {
 		expect(order.indexOf('module')).toBeLessThan(3);
 	});
 
-	it('reports progress every 25 processed images and a build summary', async () => {
+	it('emits one durable build summary without captured-log heartbeats', async () => {
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const { plugin, info } = create_wrapped({ load: () => 'picture', concurrency: 4 });
 		const load = typeof plugin.load === 'object' ? plugin.load.handler : plugin.load;
-		const build_end =
-			typeof plugin.buildEnd === 'object' ? plugin.buildEnd.handler : plugin.buildEnd;
-		if (!load || !build_end) throw new Error('expected load and buildEnd hooks');
+		const write_bundle =
+			typeof plugin.writeBundle === 'object' ? plugin.writeBundle.handler : plugin.writeBundle;
+		if (!load || !write_bundle) throw new Error('expected load and writeBundle hooks');
 
 		await Promise.all(
 			Array.from({ length: 26 }, (_, index) =>
 				load.call(/** @type {any} */ ({}), `/assets/photo-${index}.png?enhanced`)
 			)
 		);
-		expect(info).toHaveBeenCalledWith('@itznotabug/emage-core: processed 25 images...');
+		expect(info).not.toHaveBeenCalled();
 
-		build_end.call(/** @type {any} */ ({}));
-		const summary = info.mock.calls.at(-1)?.[0];
-		expect(summary).toMatch(/processed 26 images in \d+(\.\d+)?s/);
+		await write_bundle.call(/** @type {any} */ ({ info: vi.fn() }), {}, {});
+		const summary = log.mock.calls.at(-1)?.[0];
+		expect(summary).toMatch(/optimized 26 images in \d+(\.\d+)?s/);
+		log.mockRestore();
 	});
 
-	it('renders a self-erasing progress line on interactive terminals', async () => {
-		const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+	it('suppresses the summary at the silent log level', async () => {
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		try {
 			const { plugin, info } = create_wrapped({
 				load: () => 'picture',
-				concurrency: 4,
-				interactive: true
-			});
-			const load = typeof plugin.load === 'object' ? plugin.load.handler : plugin.load;
-			const build_end =
-				typeof plugin.buildEnd === 'object' ? plugin.buildEnd.handler : plugin.buildEnd;
-			if (!load || !build_end) throw new Error('expected load and buildEnd hooks');
-
-			await load.call(/** @type {any} */ ({}), '/assets/one.png?enhanced');
-			await load.call(/** @type {any} */ ({}), '/assets/two.png?enhanced');
-			const updates = write.mock.calls.map((call) => String(call[0]));
-			expect(updates.at(-1)).toBe('\r\x1b[2K@itznotabug/emage-core: processed 2 images...');
-
-			build_end.call(/** @type {any} */ ({}));
-			// The line is erased and no durable summary is written.
-			expect(write.mock.calls.map((call) => String(call[0])).at(-1)).toBe('\r\x1b[2K');
-			expect(info).not.toHaveBeenCalled();
-		} finally {
-			write.mockRestore();
-		}
-	});
-
-	it('suppresses the interactive progress line below the info log level', async () => {
-		const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-		try {
-			const { plugin, info } = create_wrapped({
-				load: () => 'picture',
-				interactive: true,
 				logLevel: 'silent'
 			});
 			const load = typeof plugin.load === 'object' ? plugin.load.handler : plugin.load;
-			const build_end =
-				typeof plugin.buildEnd === 'object' ? plugin.buildEnd.handler : plugin.buildEnd;
-			if (!load || !build_end) throw new Error('expected load and buildEnd hooks');
+			const write_bundle =
+				typeof plugin.writeBundle === 'object' ? plugin.writeBundle.handler : plugin.writeBundle;
+			if (!load || !write_bundle) throw new Error('expected load and writeBundle hooks');
 
 			await load.call(/** @type {any} */ ({}), '/assets/one.png?enhanced');
-			build_end.call(/** @type {any} */ ({}));
-			expect(write).not.toHaveBeenCalled();
+			await write_bundle.call(/** @type {any} */ ({}), {}, {});
+			expect(log).not.toHaveBeenCalled();
 			expect(info).not.toHaveBeenCalled();
 		} finally {
-			write.mockRestore();
+			log.mockRestore();
 		}
 	});
 
@@ -281,11 +259,11 @@ describe('with_bounded_encodes', () => {
 		expect(order.slice(0, 2)).toEqual(['/assets/direct.png?url', '/assets/direct.png?raw']);
 	});
 
-	it('stays silent when nothing was processed', () => {
+	it('stays silent when nothing was processed', async () => {
 		const { plugin, info } = create_wrapped({ load: () => null });
-		const build_end =
-			typeof plugin.buildEnd === 'object' ? plugin.buildEnd.handler : plugin.buildEnd;
-		build_end?.call(/** @type {any} */ ({}));
+		const write_bundle =
+			typeof plugin.writeBundle === 'object' ? plugin.writeBundle.handler : plugin.writeBundle;
+		await write_bundle?.call(/** @type {any} */ ({}), {}, {});
 		expect(info).not.toHaveBeenCalled();
 	});
 });

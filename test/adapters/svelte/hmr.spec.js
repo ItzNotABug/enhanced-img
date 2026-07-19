@@ -36,6 +36,7 @@ describe('dynamic catalog HMR', () => {
 			/** @type {unknown} */ ({
 				root: fixture_root,
 				publicDir: path.join(fixture_root, 'public'),
+				logLevel: 'silent',
 				resolve: { alias: [] },
 				logger,
 				plugins: [

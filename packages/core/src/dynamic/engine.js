@@ -5,6 +5,7 @@ import {
 	same_dynamic_candidates
 } from './matcher.js';
 import { create_dynamic_virtual_modules } from './virtual.js';
+import { format_emage_log } from '../logger.js';
 
 /**
  * Own the framework-neutral dynamic catalog, virtual-module graph, and watcher
@@ -15,10 +16,12 @@ import { create_dynamic_virtual_modules } from './virtual.js';
  *   options: Readonly<{ dynamic?: readonly string[] }>,
  *   imagetoolsPlugin: import('vite').Plugin,
  *   isOwner: (filename: string) => boolean,
- *   ownerKey: (filename: string, root: string) => string
+ *   ownerKey: (filename: string, root: string) => string,
+ *   logLabel?: string
  * }} config
  */
 export function create_dynamic_image_engine(config) {
+	const log_label = config.logLabel ?? 'emage';
 	/** @type {import('vite').ResolvedConfig} */
 	let vite_config;
 	/** @type {Awaited<ReturnType<typeof discover_candidates>> | undefined} */
@@ -57,6 +60,16 @@ export function create_dynamic_image_engine(config) {
 	function configure_server(server) {
 		cleanup_dynamic_watcher?.();
 		dev_server = server;
+		if (!summary_logged && catalog && vite_config.logLevel !== 'silent') {
+			summary_logged = true;
+			console.log(
+				format_emage_log(
+					log_label,
+					`watching ${catalog.candidates.length} catalogued ${catalog.candidates.length === 1 ? 'image' : 'images'}`,
+					'success'
+				)
+			);
+		}
 
 		/** @param {string} filename */
 		const on_catalog_event = (filename) => {
@@ -140,7 +153,11 @@ export function create_dynamic_image_engine(config) {
 		} catch (error) {
 			if (dev_server === server && generation === catalog_refresh_generation) {
 				vite_config.logger.error(
-					`@itznotabug/emage-core: failed to refresh the dynamic image catalog: ${format_error(error)}`
+					format_emage_log(
+						log_label,
+						`failed to refresh the dynamic image catalog: ${format_error(error)}`,
+						'error'
+					)
 				);
 			}
 		} finally {
@@ -180,16 +197,26 @@ export function create_dynamic_image_engine(config) {
 	}
 
 	function log_summary() {
-		if (summary_logged || !catalog || !modules) return;
+		if (
+			summary_logged ||
+			!catalog ||
+			!modules ||
+			vite_config.command !== 'build' ||
+			Boolean(vite_config.build?.ssr) ||
+			vite_config.logLevel === 'silent'
+		) {
+			return;
+		}
 		summary_logged = true;
 		let pairs = 0;
 		for (const profile of modules.profiles.values()) pairs += profile.entries.length;
-		vite_config.logger.info(
-			`emage dynamic: ${catalog.candidates.length} candidates, ${modules.profiles.size} query profiles, ${pairs} candidate/profile pairs`
-		);
 		if (pairs > 2_000) {
 			vite_config.logger.warn(
-				`@itznotabug/emage-core: dynamic catalog projects ${pairs} candidate/profile pairs; consider narrowing the configured glob`
+				format_emage_log(
+					log_label,
+					`the dynamic catalog projects ${pairs} image/profile pairs; consider narrowing the configured glob`,
+					'warning'
+				)
 			);
 		}
 	}
@@ -211,8 +238,8 @@ export function create_dynamic_image_engine(config) {
 			return modules?.load_with_context(context, id);
 		},
 		handle_hot_update,
-		build_end(error) {
-			if (!error) log_summary();
+		write_bundle() {
+			log_summary();
 		},
 		close_bundle() {
 			cleanup_dynamic_watcher?.();

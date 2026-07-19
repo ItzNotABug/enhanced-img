@@ -23,6 +23,7 @@ export function render_composite_resolver(
 	parse_query,
 	diagnostic = '@itznotabug/emage-core'
 ) {
+	const warning_prefix = `[${diagnostic.slice(diagnostic.lastIndexOf('/') + 1)}] `;
 	if (profiles.length === 0) {
 		if (!classifier) throw new Error(`${diagnostic}: missing dynamic catalog classifier`);
 		return `function ${name}() {
@@ -36,7 +37,7 @@ export function render_composite_resolver(
 		const key = importer + '\\0' + source + '\\0' + reason;
 		if (!${warned}.has(key)) {
 			${warned}.add(key);
-			console.warn(${JSON.stringify(`${diagnostic}: `)} + importer + ': dynamic source ' + JSON.stringify(source) + ' was not enhanced (' + reason + ' miss)');
+			console.warn(${JSON.stringify(warning_prefix)} + importer + ': dynamic source ' + JSON.stringify(source) + ' was not enhanced (' + reason + ' miss)');
 		}
 	}
 	return undefined;
@@ -88,7 +89,7 @@ export function render_composite_resolver(
 		const key = importer + '\\0' + source + '\\0' + reason;
 		if (!${warned}.has(key)) {
 			${warned}.add(key);
-			console.warn(${JSON.stringify(`${diagnostic}: `)} + importer + ': dynamic source ' + JSON.stringify(source) + ' was not enhanced (' + reason + ' miss)');
+			console.warn(${JSON.stringify(warning_prefix)} + importer + ': dynamic source ' + JSON.stringify(source) + ' was not enhanced (' + reason + ' miss)');
 		}
 	}
 	return undefined;

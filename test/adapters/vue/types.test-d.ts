@@ -1,10 +1,7 @@
-import {
-	enhancedImages,
-	type EnhancedImagesOptions,
-	type EnhancedImgAttributes,
-	type Picture
-} from '@itznotabug/emage-svelte';
+import { EnhancedImg, type EnhancedImgProps, type Picture } from '@itznotabug/emage-vue';
+import { enhancedImages, type EnhancedImagesOptions } from '@itznotabug/emage-vue/vite';
 import type { PluginOption } from 'vite';
+import type { GlobalComponents } from 'vue';
 
 enhancedImages();
 enhancedImages({ dynamic: 'src/assets/**/*.jpg' });
@@ -15,11 +12,18 @@ enhancedImages(options);
 const plugins: PluginOption[] = enhancedImages(options);
 
 declare const picture: Picture;
-const imported: EnhancedImgAttributes = { src: picture, alt: 'Imported' };
-const catalogued: EnhancedImgAttributes = { src: '/images/runtime.jpg', alt: 'Catalogued' };
+const imported: EnhancedImgProps = { src: picture, alt: 'Imported' };
+const catalogued: EnhancedImgProps = { src: '/images/runtime.jpg', alt: 'Catalogued' };
+const locally_registered: 'EnhancedImg' extends keyof GlobalComponents ? false : true = true;
+void EnhancedImg;
 void imported;
 void catalogued;
+void locally_registered;
 void plugins;
+
+// @ts-expect-error src is required
+const missing: EnhancedImgProps = { alt: 'Missing' };
+void missing;
 
 // @ts-expect-error unknown options are rejected
 enhancedImages({ queries: [] });

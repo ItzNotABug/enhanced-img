@@ -4,4 +4,8 @@ Framework-neutral image processing, catalog, query, and virtual-module primitive
 Emage framework adapters.
 
 Most applications should install a framework adapter such as
-`@itznotabug/emage-svelte` instead of using this package directly.
+`@itznotabug/emage-svelte` or `@itznotabug/emage-vue` instead of using this package
+directly.
+
+Set `EMAGE_ENCODE_CONCURRENCY` to a positive integer to cap simultaneous image
+encodes in memory-constrained environments.

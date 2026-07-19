@@ -1,5 +1,5 @@
 @itznotabug/emage-core
-Copyright (c) 2026 itznotabug
+Copyright 2026 Darshan Pandya (@ItzNotABug)
 
 This product is derived from @sveltejs/enhanced-img 0.11.0
 (https://github.com/sveltejs/kit/tree/main/packages/enhanced-img),

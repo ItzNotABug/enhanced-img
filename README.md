@@ -7,8 +7,8 @@ framework adapters.
   and virtual modules.
 - [`@itznotabug/emage-svelte`](./packages/svelte) owns the Svelte transform and
   `<enhanced:img>` integration.
-
-Vue support is planned separately and is not part of this release.
+- [`@itznotabug/emage-vue`](./packages/vue) provides `EnhancedImg` and the Vue/VitePress
+  compiler integration.
 
 ## Svelte
 
@@ -32,6 +32,12 @@ export default {
 
 See the [Svelte package README](./packages/svelte/README.md) for literal and dynamic
 image examples.
+
+## Vue and VitePress
+
+Use `@itznotabug/emage-vue` with Vue or VitePress. It supports optimized imports and
+finite catalogs for runtime-selected local paths. See the
+[Vue package README](./packages/vue/README.md) for setup and examples.
 
 ## Development
 

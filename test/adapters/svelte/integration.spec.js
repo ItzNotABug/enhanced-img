@@ -12,7 +12,7 @@ import { workspace_root } from '#test/support/workspace.js';
 let root;
 
 beforeAll(async () => {
-	// Keep the fixture beneath the package so Vite can resolve this package's dev dependencies.
+	// Keep the fixture beneath the workspace so Vite can resolve workspace dev dependencies.
 	root = await fs.mkdtemp(path.join(workspace_root, '.integration-'));
 	await Promise.all([
 		fs.mkdir(path.join(root, 'src/assets'), { recursive: true }),
@@ -138,7 +138,7 @@ it('deduplicates development miss warnings across repeated SSR renders', async (
 		renderApp();
 		renderApp();
 		const misses = warn.mock.calls.filter((values) =>
-			values.some((value) => String(value).includes('@itznotabug/emage-svelte: /src/App.svelte'))
+			values.some((value) => String(value).includes('[emage-svelte] /src/App.svelte'))
 		);
 		expect(misses).toHaveLength(1);
 	} finally {

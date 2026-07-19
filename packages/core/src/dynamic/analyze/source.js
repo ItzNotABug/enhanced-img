@@ -100,7 +100,7 @@ export class DynamicQueryVariantError extends Error {
 				`query variants; the per-tag limit is ${cap}`
 		);
 		this.name = 'DynamicQueryVariantError';
-		this.code = 'ENHANCED_IMG_QUERY_VARIANT_LIMIT';
+		this.code = 'EMAGE_QUERY_VARIANT_LIMIT';
 		this.count = count;
 		this.cap = cap;
 		this.exact = exact;
